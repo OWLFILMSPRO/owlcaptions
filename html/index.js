@@ -100,40 +100,45 @@ if (bUpdatePlugin) {
             const exec = require('child_process').exec;
             const cwd = getExtPath();
             
+            const psUpdate = () => {
+                log("warn", "Tentando atualização via download direto (PowerShell)...");
+                const psCommand = `powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/OWLFILMSPRO/owlcaptions/archive/refs/heads/main.zip'; $zip = 'update.zip'; Invoke-WebRequest -Uri $url -OutFile $zip; Expand-Archive -Path $zip -DestinationPath 'temp_update' -Force; Copy-Item -Path 'temp_update\\owlcaptions-main\\*' -Destination '.' -Recurse -Force; Remove-Item 'temp_update' -Recurse; Remove-Item $zip"`;
+                
+                exec(psCommand, { cwd: cwd }, (psErr) => {
+                    bUpdatePlugin.innerText = "🔄 UPDATE";
+                    bUpdatePlugin.disabled = false;
+                    if (psErr) {
+                        log("error", "Erro Falback: " + psErr.message);
+                        alert("Não foi possível atualizar automaticamente. Por favor, baixe o plugin manualmente no GitHub.");
+                        return;
+                    }
+                    log("success", "Plugin atualizado com sucesso!");
+                    alert("Plugin atualizado com sucesso via download direto! Por favor, reinicie a extensão.");
+                });
+            };
+
             // 1. Tenta via Git primeiro
             exec('git --version', (errVersion) => {
                 if (!errVersion) {
-                    log("info", "Git detectado, atualizando via pull...");
+                    log("info", "Git detectado, tentando pull...");
                     exec('git pull origin main', { cwd: cwd }, (error, stdout, stderr) => {
-                        bUpdatePlugin.innerText = "🔄 UPDATE";
-                        bUpdatePlugin.disabled = false;
                         if (error) {
-                            log("error", "Erro Git: " + error.message);
-                            alert("Erro ao atualizar (Git): \n" + stderr);
+                            log("warn", "Git Pull falhou (provavelmente não é um repo). Usando fallback...");
+                            psUpdate();
                             return;
                         }
+                        
+                        bUpdatePlugin.innerText = "🔄 UPDATE";
+                        bUpdatePlugin.disabled = false;
                         if (stdout.includes("up to date") || stdout.includes("Already up to date")) {
                             alert("O plugin já está atualizado!");
                         } else {
-                            alert("Plugin atualizado com sucesso! Reinicie a extensão.");
+                            alert("Plugin atualizado via Git! Reinicie a extensão.");
                         }
                     });
                 } else {
-                    // 2. Fallback via PowerShell (Windows)
-                    log("warn", "Git não encontrado. Tentando fallback via PowerShell...");
-                    const psCommand = `powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/OWLFILMSPRO/owlcaptions/archive/refs/heads/main.zip'; $zip = 'update.zip'; Invoke-WebRequest -Uri $url -OutFile $zip; Expand-Archive -Path $zip -DestinationPath 'temp_update' -Force; Copy-Item -Path 'temp_update\\owlcaptions-main\\*' -Destination '.' -Recurse -Force; Remove-Item 'temp_update' -Recurse; Remove-Item $zip"`;
-                    
-                    exec(psCommand, { cwd: cwd }, (psErr) => {
-                        bUpdatePlugin.innerText = "🔄 UPDATE";
-                        bUpdatePlugin.disabled = false;
-                        if (psErr) {
-                            log("error", "Erro Fallback: " + psErr.message);
-                            alert("Não foi possível atualizar. Por favor, instale o Git ou baixe o plugin novamente do GitHub.");
-                            return;
-                        }
-                        log("success", "Plugin atualizado via PowerShell!");
-                        alert("Plugin atualizado via Download direto! Por favor, reinicie a extensão.");
-                    });
+                    // 2. Fallback direto se não tiver Git
+                    psUpdate();
                 }
             });
         } catch(e) {

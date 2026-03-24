@@ -18,6 +18,25 @@ function log(level, msg) {
   c.appendChild(d); c.scrollTop = c.scrollHeight;
 }
 
+function showToast(message, type = "info") {
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+    
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+    
+    container.appendChild(toast);
+    
+    // Auto remove after 5s
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(-50%) translateY(-20px)";
+        toast.style.transition = "0.5s";
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
+}
+
 function getExtPath() {
     let p = cs.getSystemPath(SystemPath.EXTENSION);
     p = decodeURI(p).replace(/^file:\/{2,3}/, "");
@@ -102,18 +121,18 @@ if (bUpdatePlugin) {
             
             const psUpdate = () => {
                 log("warn", "Tentando atualização via download direto (PowerShell)...");
-                const psCommand = `powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/OWLFILMSPRO/owlcaptions/archive/refs/heads/main.zip'; $zip = 'update.zip'; Invoke-WebRequest -Uri $url -OutFile $zip; Expand-Archive -Path $zip -DestinationPath 'temp_update' -Force; Copy-Item -Path 'temp_update\\owlcaptions-main\\*' -Destination '.' -Recurse -Force; Remove-Item 'temp_update' -Recurse; Remove-Item $zip"`;
+                const psCommand = `powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://github.com/OWLFILMSPRO/owlcaptions/archive/refs/heads/main.zip'; $zip = 'update.zip'; Invoke-WebRequest -Uri $url -OutFile $zip; Expand-Archive -Path $zip -DestinationPath 'temp_update' -Force; Copy-Item -Path 'temp_update\\owlcaptions-main\\*' -Destination '.' -Recurse -Force; Remove-Item 'temp_update' -Recurse; Remove-Item $zip]"`;
                 
                 exec(psCommand, { cwd: cwd }, (psErr) => {
                     bUpdatePlugin.innerText = "🔄 UPDATE";
                     bUpdatePlugin.disabled = false;
                     if (psErr) {
                         log("error", "Erro Falback: " + psErr.message);
-                        alert("Não foi possível atualizar automaticamente. Por favor, baixe o plugin manualmente no GitHub.");
+                        showToast("Não foi possível atualizar automaticamente.", "error");
                         return;
                     }
                     log("success", "Plugin atualizado com sucesso!");
-                    alert("Plugin atualizado com sucesso via download direto! Por favor, reinicie a extensão.");
+                    showToast("Plugin atualizado com sucesso via download direto! Por favor, reinicie a extensão.", "success");
                 });
             };
 
@@ -131,9 +150,9 @@ if (bUpdatePlugin) {
                         bUpdatePlugin.innerText = "🔄 UPDATE";
                         bUpdatePlugin.disabled = false;
                         if (stdout.includes("up to date") || stdout.includes("Already up to date")) {
-                            alert("O plugin já está atualizado!");
+                            showToast("O plugin já está atualizado!");
                         } else {
-                            alert("Plugin atualizado via Git! Reinicie a extensão.");
+                            showToast("Plugin atualizado via Git! Reinicie a extensão.", "success");
                         }
                     });
                 } else {
@@ -227,7 +246,7 @@ if (bIns) bIns.onclick = () => {
         }
         else {
             log("error", "Erro do Timeline: " + res);
-            alert("Erro ao gerar legendas: " + res);
+            showToast("Erro ao gerar legendas.", "error");
         }
     });
 };
@@ -248,7 +267,7 @@ if (bInsIntro) bInsIntro.onclick = () => {
         }
         else {
             log("error", "Erro Intro: " + res);
-            alert("Erro ao importar Intro: " + res);
+            showToast("Erro ao importar Intro.", "error");
         }
     });
 };

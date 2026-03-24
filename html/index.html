@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>OWLFILMS.CAP PREMIUM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0c0c0e;
+            --card: #141417;
+            --primary: #db2777;
+            --primary-glow: rgba(219, 39, 119, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #ffffff;
+            --muted: #88888b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 10px;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        header { 
+            display: flex; 
+            flex-direction: row;
+            align-items: center; 
+            justify-content: flex-start; 
+            gap: 15px; 
+            margin-bottom: 20px; 
+            padding-left: 5px; 
+            width: 100%;
+        }
+        .logo-main { width: 110px; height: auto; display: block; }
+        .refresh-icon { cursor: pointer; font-size: 16px; color: white; opacity: 0.8; }
+
+        .section-title { font-size: 9px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        
+        .btn-main { background: var(--border); color: white; border: 1px solid var(--border); padding: 10px 15px; border-radius: 12px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+        .btn-main:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background: #be185d; box-shadow: 0 0 20px var(--primary-glow); }
+        
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .gallery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
+        .gallery-card { background: #1c1c1f; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: 0.2s; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; padding: 0; position: relative; }
+        .gallery-card:hover { border-color: var(--primary); }
+        .gallery-card.active { border-color: var(--primary); background: rgba(219, 39, 119, 0.1); }
+        .style-name { font-size: 8px; font-weight: 800; color: white; padding: 8px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+
+        select.track-select { background: #1c1c1f; color: white; border: 1px solid var(--border); padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; width: 100%; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; }
+        select.track-select:focus { border-color: var(--primary); }
+        .track-label { font-size: 8px; color: var(--muted); margin-bottom: 5px; display: block; font-weight: 700; }
+
+        .footer-info { margin-top: 10px; display: flex; justify-content: space-between; font-size: 8px; color: var(--muted); font-weight: 700; }
+        #consoleLogs { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--muted); margin-top: 15px; height: 30px; overflow: hidden; opacity: 0.3; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <header style="display:flex; justify-content:space-between; align-items:center;">
+        <img src="owl.png" class="logo-main" alt="OWLFILMS" style="margin:0;">
+        <button id="btnUpdatePlugin" class="btn-main" style="width:auto; padding:8px 15px; margin:0; font-size:10px; background:var(--bg-dark); border:1px solid var(--border);" title="Atualizar via GitHub">🔄 UPDATE</button>
+    </header>
+
+    <div class="section-title">Intro de Vídeo</div>
+    <div class="card">
+        <button id="btnImportIntroPicker" class="btn-main" style="width:100%; margin-bottom: 12px; border: 1px dashed var(--primary); color: var(--primary);">➕ ADD INTRO MOGRT</button>
+        <div id="introGrid" class="gallery-grid" style="max-height: 150px; margin-bottom: 10px;"></div>
+        <button id="btnInsertIntro" class="btn-main btn-primary" style="padding:12px; font-size:10px; width:100%;" disabled>INSERIR NA TIMELINE</button>
+    </div>
+
+    <div class="section-title">Step 1: Identificação</div>
+    <div class="card">
+        <div style="display:flex; gap:10px; margin-bottom: 5px;">
+            <button id="btnLoadTranscript" class="btn-main btn-primary" style="flex:1; padding:12px; font-size:10px; margin:0;">🔍 SYNC C1</button>
+            <button id="btnManualSRT" class="btn-main" style="flex:1; padding:12px; font-size:10px; margin:0;">📁 MANUAL SRT</button>
+        </div>
+
+        <div id="captionSummary" style="display:none; margin-top:10px; padding:10px; background:rgba(14,165,233,0.1); border-radius:10px; border:1px solid var(--primary);">
+            <div id="captionCountLabel" style="font-size:10px; font-weight:800; color:var(--primary); text-align:center;">0 CAPTIONS IDENTIFIED</div>
+        </div>
+    </div>
+
+    <div class="section-title">Step 2: Estilos de Legendas</div>
+    <div class="card">
+        <button id="btnImportMogrt" class="btn-main" style="width:100% ; margin-bottom: 12px; border: 1px dashed var(--primary); color: var(--primary);">➕ ADD CUSTOM MOGRT</button>
+        <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+
+    <div class="section-title">Step 3: Finalizar</div>
+    <div class="card">
+        <div style="margin-bottom: 15px;">
+            <span class="track-label">GRAVAR NA FAIXA DE VÍDEO:</span>
+            <select id="selVideoTrack" class="track-select">
+                <option value="-1">✨ ULTIMA FAIXA</option>
+                <!-- Populated by JS -->
+            </select>
+        </div>
+        <button id="btnInsert" class="btn-main btn-primary" style="padding:18px; font-size:12px; width:100%;" disabled>GERAR LEGENDAS ANIMADAS</button>
+        <div class="footer-info">
+            <span>ENGINE: PPRO v26.0+</span>
+            <span>STATUS: READY</span>
+        </div>
+    </div>
+
+    <div id="consoleLogs"></div>
+
+    <script src="js/CSInterface.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>

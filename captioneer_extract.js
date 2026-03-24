@@ -1,0 +1,33 @@
+function exportSequence(params) {
+    var mySeq = app.project.activeSequence;
+    if (!mySeq) {
+        alert('Please, open a sequence first.');
+        return false;
+    }
+
+    var sep = ($.os.indexOf("Windows") !== -1) ? "\\\\" : "/";
+
+    var outputName = params.outputPath + sep + "temp";
+    var presetPath = params.presetPath;
+    var workAreaType = 0;
+
+    mySeq.exportAsMediaDirect(outputName, presetPath, workAreaType);
+
+    var exportedWAV = File(outputName + ".wav");
+    if (exportedWAV.exists) {
+        exportedWAV.remove();
+    }
+
+    try {
+        var exportedSRT = Folder(params.outputPath).getFiles("*.srt")[0];
+    } catch(e) {
+        alert(e.toString());
+    }
+
+    $.exportedSRT = Folder.decode(exportedSRT.fsName);
+
+    return true;
+};
+
+exportSequence({
+        outputPath: "`,"		text-overflow: ellipsis;","https://fonts.gstatic.com/s/encodesanscondensed/v10/j8_46_LD37rqfuwxyIuaZhE6cRXOLtm2gfT-WYuZDi4N.ttf","] with variant [","Kranky","Could not load conversations script","--filter","Noto Sans Sam

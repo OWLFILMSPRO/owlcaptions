@@ -73,6 +73,7 @@ OWL.createCaptions = function(data, mogrt, targetTrackIndex) {
         }
         
         var mogrtFile = new File(mogrt.mogrtFile);
+        var createdClips = [];
         for (var i = 0; i < data.length; i++) {
             var start = new Time(); start.seconds = data[i].start;
             var end = new Time(); end.seconds = data[i].end;
@@ -87,6 +88,7 @@ OWL.createCaptions = function(data, mogrt, targetTrackIndex) {
                 
                 if (clip) {
                     clip.end = end.ticks;
+                    createdClips.push(clip.nodeId);
                     var comp = clip.getMGTComponent();
                     if (comp && comp.properties) {
                        var props = comp.properties;
@@ -105,7 +107,7 @@ OWL.createCaptions = function(data, mogrt, targetTrackIndex) {
                  }
             }
         }
-        return "success";
+        return JSON.stringify({ status: "success", clips: createdClips, track: targetTrackIndex });
     } catch(e) { return e.toString(); }
 };
 
@@ -128,11 +130,79 @@ OWL.importIntroMogrt = function(mogrt, targetTrackIndex) {
                  targetTrackIndex = seq.videoTracks.numTracks - 1;
                  clip = seq.importMGT(mogrtFile.fsName, start.ticks, targetTrackIndex, 0); 
             }
-            if (clip) return "success";
+            if (clip) return JSON.stringify({ status: "success", nodeId: clip.nodeId, track: targetTrackIndex });
             else return "Falha ao importar MOGRT.";
         } catch(e) {
             return "Erro no ImportMGT: " + e.toString();
         }
+    } catch(e) { return e.toString(); }
+};
+
+OWL.getMogrtProperties = function(nodeId) {
+    try {
+        var seq = app.project.activeSequence;
+        if (!seq) return "No active sequence";
+        
+        var clip = null;
+        // Search for clip by nodeId across all tracks
+        for (var i = 0; i < seq.videoTracks.numTracks; i++) {
+            var track = seq.videoTracks[i];
+            for (var j = 0; j < track.clips.numItems; j++) {
+                if (track.clips[j].nodeId === nodeId) {
+                    clip = track.clips[j];
+                    break;
+                }
+            }
+            if (clip) break;
+        }
+
+        if (!clip) return "Clip not found";
+        
+        var comp = clip.getMGTComponent();
+        if (!comp) return "MGT component not found";
+        
+        var props = comp.properties;
+        var result = {};
+        for (var k = 0; k < props.numParameters; k++) {
+            var p = props[k];
+            result[p.displayName] = p.getValue();
+        }
+        return JSON.stringify(result);
+    } catch(e) { return e.toString(); }
+};
+
+OWL.setMogrtProperty = function(nodeId, displayName, value) {
+    try {
+        var seq = app.project.activeSequence;
+        if (!seq) return "No active sequence";
+        
+        var clip = null;
+        for (var i = 0; i < seq.videoTracks.numTracks; i++) {
+            var track = seq.videoTracks[i];
+            for (var j = 0; j < track.clips.numItems; j++) {
+                if (track.clips[j].nodeId === nodeId) {
+                    clip = track.clips[j];
+                    break;
+                }
+            }
+            if (clip) break;
+        }
+
+        if (!clip) return "Clip not found";
+        
+        var comp = clip.getMGTComponent();
+        if (!comp) return "MGT component not found";
+        
+        var prop = comp.properties.getParamForDisplayName(displayName);
+        if (prop) {
+            // Handle position/scale which might be strings or arrays depending on version
+            if (typeof value === 'string' && value.indexOf('[') === 0) {
+                value = JSON.parse(value);
+            }
+            prop.setValue(value);
+            return "success";
+        }
+        return "Property not found: " + displayName;
     } catch(e) { return e.toString(); }
 };
 

@@ -6,6 +6,8 @@ try { fs = require('fs'); } catch(e) { }
 let captionItems = [];
 let selectedMogrt = null;
 let selectedIntroMogrt = null;
+let currentEditingNodeId = null;
+let discoveredProps = {};
 
 function log(level, msg) {
   const c = document.getElementById("consoleLogs");
@@ -241,12 +243,19 @@ if (bIns) bIns.onclick = () => {
     log("info", "Track de Vídeo Alvo: " + (vidTrackIdx === -1 ? "NOVA FAIXA" : "V" + (vidTrackIdx + 1)));
     
     cs.evalScript(`OWL.createCaptions(${JSON.stringify(captionItems)}, ${JSON.stringify(selectedMogrt)}, ${vidTrackIdx})`, (res) => {
-        if(res === "success") {
-            log("success", "MOGRTs aplicados com sucesso! FIM DO PROCESSO.");
-        }
-        else {
-            log("error", "Erro do Timeline: " + res);
-            showToast("Erro ao gerar legendas.", "error");
+        try {
+            const data = JSON.parse(res);
+            if(data.status === "success") {
+                log("success", "MOGRTs aplicados com sucesso! FIM DO PROCESSO.");
+                if (data.clips && data.clips.length > 0) {
+                    openEditor(data.clips[0]); // Abre editor para a primeira legenda
+                }
+            } else {
+                log("error", "Erro do Timeline: " + res);
+                showToast("Erro ao gerar legendas.", "error");
+            }
+        } catch(e) {
+            log("error", "Erro parse: " + res);
         }
     });
 };
@@ -261,13 +270,17 @@ if (bInsIntro) bInsIntro.onclick = () => {
     if (!selectedIntroMogrt) { log("warn", "Selecione uma Intro primeiro!"); return; }
     
     cs.evalScript(`OWL.importIntroMogrt(${JSON.stringify(selectedIntroMogrt)}, ${vidTrackIdx})`, (res) => {
-        if(res === "success") {
-            log("success", "Intro aplicada com sucesso!");
-            // updateTrackSelectors(); // Removido para performance, a menos que mude tracks
-        }
-        else {
-            log("error", "Erro Intro: " + res);
-            showToast("Erro ao importar Intro.", "error");
+        try {
+            const data = JSON.parse(res);
+            if(data.status === "success") {
+                log("success", "Intro aplicada com sucesso!");
+                openEditor(data.nodeId);
+            } else {
+                log("error", "Erro Intro: " + res);
+                showToast("Erro ao importar Intro.", "error");
+            }
+        } catch(e) {
+            log("error", "Erro parse Intro: " + res);
         }
     });
 };
@@ -439,6 +452,163 @@ const bRef = document.getElementById("btnRefreshTracks");
 if (bRef) bRef.onclick = () => {
     log("info", "Atualizando trilhas...");
     updateTrackSelectors();
+};
+
+// ── MOGRT Editor Logic ──
+
+const editorContainer = document.getElementById("editorContainer");
+const mainContent = Array.from(document.body.children).filter(el => el.id !== "editorContainer" && el.id !== "toastContainer" && el.tagName !== "SCRIPT");
+
+function openEditor(nodeId) {
+    currentEditingNodeId = nodeId;
+    
+    // Hide main UI
+    mainContent.forEach(el => el.style.display = "none");
+    editorContainer.style.display = "block";
+    
+    log("info", "Carregando propriedades do MOGRT...");
+    
+    cs.evalScript(`OWL.getMogrtProperties("${nodeId}")`, (res) => {
+        try {
+            const props = JSON.parse(res);
+            log("info", "Propriedades carregadas.");
+            syncEditorUI(props);
+        } catch(e) {
+            log("error", "Erro ao carregar propriedades: " + res);
+        }
+    });
+}
+
+function closeEditor() {
+    editorContainer.style.display = "none";
+    mainContent.forEach(el => {
+        if (el.id === "captionSummary" && captionItems.length === 0) return;
+        el.style.display = "";
+    });
+}
+
+document.getElementById("btnBackToMain").onclick = closeEditor;
+
+function syncEditorUI(props) {
+    discoveredProps = {}; // Reset discovery
+    
+    // Mapping properties based on common MOGRT names
+    const mapping = {
+        "Line 1": ["Source Text", "Text", "texto", "Line 1"],
+        "Line 2": ["Source Text 2", "Text 2", "texto 2", "Line 2"],
+        "Size1": ["Font Size", "Size", "Tamanho"],
+        "Size2": ["Font Size 2", "Size 2", "Tamanho 2"],
+        "Pos1": ["Position", "Posição"],
+        "Pos2": ["Position 2", "Posição 2"],
+        "Scale1": ["Scale", "Escala"],
+        "Scale2": ["Scale 2", "Escala 2"],
+        "Box1": ["Box 1", "Cor 1", "Color 1", "BOX 1"],
+        "Box2": ["Box 2", "Cor 2", "Color 2", "BOX 2"],
+        "FlagScale": ["Flag Scale", "Escala Bandeira"]
+    };
+
+    function findProp(id, keys) {
+        for (let k of keys) { 
+            if (props[k] !== undefined) {
+                discoveredProps[id] = k;
+                return { name: k, value: props[k] }; 
+            }
+        }
+        return null;
+    }
+
+    const l1 = findProp("Line 1", mapping["Line 1"]);
+    if (l1) document.getElementById("editLine1Text").value = l1.value;
+
+    const l2 = findProp("Line 2", mapping["Line 2"]);
+    if (l2) document.getElementById("editLine2Text").value = l2.value;
+
+    const s1 = findProp("Size1", mapping["Size1"]);
+    if (s1) {
+        document.getElementById("editLine1Size").value = s1.value;
+        document.getElementById("valLine1Size").innerText = parseFloat(s1.value).toFixed(1);
+    }
+
+    const s2 = findProp("Size2", mapping["Size2"]);
+    if (s2) {
+        document.getElementById("editLine2Size").value = s2.value;
+        document.getElementById("valLine2Size").innerText = parseFloat(s2.value).toFixed(1);
+    }
+
+    const p1 = findProp("Pos1", mapping["Pos1"]);
+    if (p1 && Array.isArray(p1.value)) {
+        document.getElementById("editLine1PosX").value = p1.value[0];
+        document.getElementById("editLine1PosY").value = p1.value[1];
+    }
+
+    const p2 = findProp("Pos2", mapping["Pos2"]);
+    if (p2 && Array.isArray(p2.value)) {
+        document.getElementById("editLine2PosX").value = p2.value[0];
+        document.getElementById("editLine2PosY").value = p2.value[1];
+    }
+
+    const sc1 = findProp("Scale1", mapping["Scale1"]);
+    if (sc1) document.getElementById("editLine1Scale").value = sc1.value;
+
+    const sc2 = findProp("Scale2", mapping["Scale2"]);
+    if (sc2) document.getElementById("editLine2Scale").value = sc2.value;
+
+    const b1 = findProp("Box1", mapping["Box1"]);
+    if (b1) document.getElementById("editBox1Color").value = b1.value;
+
+    const b2 = findProp("Box2", mapping["Box2"]);
+    if (b2) document.getElementById("editBox2Color").value = b2.value;
+    
+    const fs = findProp("FlagScale", mapping["FlagScale"]);
+    if (fs) {
+        document.getElementById("editFlagScale").value = fs.value;
+        document.getElementById("valFlagScale").innerText = parseInt(fs.value);
+    }
+}
+
+function updateProp(id, value) {
+    if (!currentEditingNodeId || !discoveredProps[id]) return;
+    cs.evalScript(`OWL.setMogrtProperty("${currentEditingNodeId}", "${discoveredProps[id]}", ${JSON.stringify(value)})`);
+}
+
+// Event Listeners for Editor
+document.getElementById("editLine1Text").oninput = (e) => updateProp("Line 1", e.target.value);
+document.getElementById("editLine2Text").oninput = (e) => updateProp("Line 2", e.target.value);
+
+document.getElementById("editLine1Size").oninput = (e) => {
+    document.getElementById("valLine1Size").innerText = parseFloat(e.target.value).toFixed(1);
+    updateProp("Size1", parseFloat(e.target.value));
+};
+document.getElementById("editLine2Size").oninput = (e) => {
+    document.getElementById("valLine2Size").innerText = parseFloat(e.target.value).toFixed(1);
+    updateProp("Size2", parseFloat(e.target.value));
+};
+
+const updatePos1 = () => {
+    const x = parseFloat(document.getElementById("editLine1PosX").value);
+    const y = parseFloat(document.getElementById("editLine1PosY").value);
+    updateProp("Pos1", [x, y]);
+};
+document.getElementById("editLine1PosX").oninput = updatePos1;
+document.getElementById("editLine1PosY").oninput = updatePos1;
+
+const updatePos2 = () => {
+    const x = parseFloat(document.getElementById("editLine2PosX").value);
+    const y = parseFloat(document.getElementById("editLine2PosY").value);
+    updateProp("Pos2", [x, y]);
+};
+document.getElementById("editLine2PosX").oninput = updatePos2;
+document.getElementById("editLine2PosY").oninput = updatePos2;
+
+document.getElementById("editLine1Scale").oninput = (e) => updateProp("Scale1", parseFloat(e.target.value));
+document.getElementById("editLine2Scale").oninput = (e) => updateProp("Scale2", parseFloat(e.target.value));
+
+document.getElementById("editBox1Color").onchange = (e) => updateProp("Box1", e.target.value);
+document.getElementById("editBox2Color").onchange = (e) => updateProp("Box2", e.target.value);
+
+document.getElementById("editFlagScale").oninput = (e) => {
+    document.getElementById("valFlagScale").innerText = parseInt(e.target.value);
+    updateProp("FlagScale", parseInt(e.target.value));
 };
 
 // Inicia no Load

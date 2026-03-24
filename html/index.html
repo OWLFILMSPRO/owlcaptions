@@ -98,6 +98,21 @@
         }
         .toast.error { border-left-color: #ef4444; }
         .toast.success { border-left-color: #22c55e; }
+
+        /* Editor Styles */
+        #editorContainer { display: none; }
+        .editor-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .editor-label { font-size: 9px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .editor-input-group { display: flex; align-items: center; gap: 10px; }
+        .editor-slider { flex: 1; accent-color: var(--primary); height: 4px; border-radius: 2px; cursor: pointer; }
+        .editor-value { font-size: 10px; color: var(--primary); font-weight: 700; min-width: 35px; text-align: right; }
+        .editor-textarea { background: #1c1c1f; color: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; width: 100%; min-height: 60px; resize: none; outline: none; }
+        .editor-textarea:focus { border-color: var(--primary); }
+        .editor-color-group { display: flex; align-items: center; gap: 10px; }
+        .editor-color-input { width: 40px; height: 30px; border: none; background: none; cursor: pointer; padding: 0; }
+        .editor-pos-scale { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pos-scale-item { display: flex; align-items: center; gap: 5px; }
+        .pos-scale-input { background: #1c1c1f; color: var(--primary); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 10px; font-weight: 700; width: 100%; text-align: center; }
     </style>
 </head>
 <body>
@@ -149,6 +164,99 @@
     </div>
 
     <div id="consoleLogs"></div>
+
+    <!-- MOGRT Editor Tab -->
+    <div id="editorContainer">
+        <header style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button id="btnBackToMain" class="btn-main" style="width:auto; padding:8px 12px; margin:0;">⬅ VOLTAR</button>
+                <span style="font-size:11px; font-weight:800; color:white;">EDIÇÃO DE MOGRT</span>
+            </div>
+        </header>
+
+        <div class="card" style="margin-top: 10px;">
+            <div class="section-title">LINE 1</div>
+            <div class="editor-row">
+                <textarea id="editLine1Text" class="editor-textarea" placeholder="Texto da Linha 1"></textarea>
+            </div>
+            <div class="editor-row">
+                <span class="editor-label">Font Size</span>
+                <div class="editor-input-group">
+                    <input type="range" id="editLine1Size" class="editor-slider" min="10" max="300" value="80">
+                    <span id="valLine1Size" class="editor-value">80.0</span>
+                </div>
+            </div>
+            <div class="editor-pos-scale">
+                <div class="editor-row">
+                    <span class="editor-label">Position X / Y</span>
+                    <div class="editor-input-group">
+                        <input type="number" id="editLine1PosX" class="pos-scale-input" value="0">
+                        <input type="number" id="editLine1PosY" class="pos-scale-input" value="0">
+                    </div>
+                </div>
+                <div class="editor-row">
+                    <span class="editor-label">Scale</span>
+                    <div class="editor-input-group">
+                        <input type="number" id="editLine1Scale" class="pos-scale-input" value="100">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">LINE 2</div>
+            <div class="editor-row">
+                <textarea id="editLine2Text" class="editor-textarea" placeholder="Texto da Linha 2"></textarea>
+            </div>
+            <div class="editor-row">
+                <span class="editor-label">Font Size</span>
+                <div class="editor-input-group">
+                    <input type="range" id="editLine2Size" class="editor-slider" min="10" max="300" value="80">
+                    <span id="valLine2Size" class="editor-value">80.0</span>
+                </div>
+            </div>
+            <div class="editor-pos-scale">
+                <div class="editor-row">
+                    <span class="editor-label">Position X / Y</span>
+                    <div class="editor-input-group">
+                        <input type="number" id="editLine2PosX" class="pos-scale-input" value="0">
+                        <input type="number" id="editLine2PosY" class="pos-scale-input" value="0">
+                    </div>
+                </div>
+                <div class="editor-row">
+                    <span class="editor-label">Scale</span>
+                    <div class="editor-input-group">
+                        <input type="number" id="editLine2Scale" class="pos-scale-input" value="100">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">CORES E FLAG</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 15px;">
+                <div class="editor-row">
+                    <span class="editor-label">Box 1</span>
+                    <div class="editor-color-group">
+                        <input type="color" id="editBox1Color" class="editor-color-input" value="#ffc000">
+                    </div>
+                </div>
+                <div class="editor-row">
+                    <span class="editor-label">Box 2</span>
+                    <div class="editor-color-group">
+                        <input type="color" id="editBox2Color" class="editor-color-input" value="#ffffff">
+                    </div>
+                </div>
+            </div>
+            <div class="editor-row">
+                <span class="editor-label">Flag Scale</span>
+                <div class="editor-input-group">
+                    <input type="range" id="editFlagScale" class="editor-slider" min="10" max="200" value="100">
+                    <span id="valFlagScale" class="editor-value">100</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="toastContainer"></div>
     <script src="js/CSInterface.js"></script>

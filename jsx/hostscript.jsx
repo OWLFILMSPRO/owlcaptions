@@ -337,36 +337,41 @@ OWL.createAIHighlights = function(segments) {
         var projectItem = sourceClip.projectItem;
 
         // 2. Cria nova sequência para os cortes
-        // No Premiere, createNewSequence exige um preset (.sqpreset) ou fica vazio.
-        // Tentaremos criar e se falhar avisamos.
         var newSeqName = "CORTES IA - " + seq.name;
         var newSeq = app.project.createNewSequence(newSeqName, ""); 
         
-        if (!newSeq) return "Falha ao criar nova sequência. Tente criar uma sequência vazia manualmente primeiro.";
+        if (!newSeq) return "Falha ao criar nova sequência.";
 
         var currentTicks = "0";
 
         for (var i = 0; i < segments.length; i++) {
             var seg = segments[i];
             
-            // Insere o clipe na nova sequência (V1 e A1 por padrão)
+            // INSIRA VÍDEO E ÁUDIO NA NOVA SEQUÊNCIA
+            // Overwrite na trilha de vídeo 1 e áudio 1
             newSeq.videoTracks[0].overwriteClip(projectItem, currentTicks);
+            if (newSeq.audioTracks.numTracks > 0) {
+                newSeq.audioTracks[0].overwriteClip(projectItem, currentTicks);
+            }
             
-            // O overwriteClip insere o clipe inteiro. Precisamos trimar.
-            // Pegamos o último clipe inserido
-            var insertedClip = newSeq.videoTracks[0].clips[newSeq.videoTracks[0].clips.numItems - 1];
+            // PEGA OS CLIPES INSERIDOS (Últimos da trilha)
+            var insertedVideoClip = newSeq.videoTracks[0].clips[newSeq.videoTracks[0].clips.numItems - 1];
+            var insertedAudioClip = (newSeq.audioTracks.numTracks > 0) ? newSeq.audioTracks[0].clips[newSeq.audioTracks[0].clips.numItems - 1] : null;
             
             var startTime = new Time(); startTime.seconds = parseFloat(seg.start);
             var endTime = new Time(); endTime.seconds = parseFloat(seg.end);
             
-            insertedClip.inPoint = startTime.ticks;
-            insertedClip.outPoint = endTime.ticks;
+            // APLICA O CORTE (TRIM) EM AMBOS PARA MANTER SINCRONIA
+            if (insertedVideoClip) {
+                insertedVideoClip.inPoint = startTime.ticks;
+                insertedVideoClip.outPoint = endTime.ticks;
+            }
+            if (insertedAudioClip) {
+                insertedAudioClip.inPoint = startTime.ticks;
+                insertedAudioClip.outPoint = endTime.ticks;
+            }
             
-            // Calcula próxima posição (ticks são strings grandes, melhor usar a API de Time)
-            var durationTicks = endTime.ticks - startTime.ticks; 
-            // Nota: No ExtendScript, operações matemáticas com ticks (strings) podem ser instáveis.
-            // Usaremos a propriedade .seconds para cálculo e depois converteremos.
-            
+            // ATUALIZA POSIÇÃO PARA O PRÓXIMO CORTE
             var nextStartTime = new Time();
             nextStartTime.ticks = currentTicks;
             nextStartTime.seconds += (endTime.seconds - startTime.seconds);

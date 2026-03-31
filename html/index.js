@@ -498,8 +498,9 @@ async function updateTrackSelectors() {
 
         const oldVid = selVid.value;
 
+        let oldCap = "";
         if (selCap) {
-            const oldCap = selCap.value;
+            oldCap = selCap.value;
             selCap.options.length = 0;
             if (info.captionCount > 0) {
                 for (let i = 0; i < info.captionCount; i++) {
@@ -519,8 +520,7 @@ async function updateTrackSelectors() {
             selVid.add(new Option(`V${j+1} (Video ${j+1})`, j));
         }
 
-        // Restaura seleções
-        if (oldCap !== "" && parseInt(oldCap) < info.captionCount) selCap.value = oldCap;
+        // Restaura vídeo
         
         if (oldVid === "-1") selVid.value = "-1";
         else if (oldVid !== "" && parseInt(oldVid) < info.videoCount) selVid.value = oldVid;

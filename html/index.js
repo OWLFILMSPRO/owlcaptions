@@ -8,6 +8,7 @@ let selectedMogrt = null;
 let selectedIntroMogrt = null;
 let currentEditingNodeId = null;
 let discoveredProps = {};
+let geminiKey = localStorage.getItem("gemini_api_key") || "";
 
 function log(level, msg) {
   const c = document.getElementById("consoleLogs");
@@ -101,6 +102,7 @@ async function loadData(path) {
           document.getElementById("captionCountLabel").textContent = items.length + " Legendas Detectadas!";
           log("success", "Feito! Selecione o Estilo MOGRT abaixo e clique Inserir!");
           checkReady();
+          checkAiReady();
       } else { log("error", "O arquivo SRT está vazio."); }
   } catch(e) { log("error", "Falha absurda na leitura local: " + e.message); }
 }
@@ -166,6 +168,101 @@ if (bUpdatePlugin) {
             bUpdatePlugin.innerText = "🔄 UPDATE";
             bUpdatePlugin.disabled = false;
             log("error", "Erro Node.js ao atualizar: " + e.message);
+        }
+    };
+}
+
+// ── Gemini IA Logic ──
+const inputKey = document.getElementById("geminiApiKey");
+const sliderCuts = document.getElementById("numCuts");
+const valCuts = document.getElementById("valNumCuts");
+const btnAi = document.getElementById("btnGenerateAICuts");
+const aiStatus = document.getElementById("aiStatus");
+
+if (inputKey) {
+    inputKey.value = geminiKey;
+    inputKey.oninput = (e) => {
+        geminiKey = e.target.value;
+        localStorage.setItem("gemini_api_key", geminiKey);
+        checkAiReady();
+    };
+}
+
+if (sliderCuts) {
+    sliderCuts.oninput = (e) => {
+        valCuts.innerText = e.target.value;
+    };
+}
+
+function checkAiReady() {
+    if (btnAi) {
+        btnAi.disabled = !(captionItems.length > 0 && geminiKey.length > 10);
+        btnAi.style.opacity = btnAi.disabled ? "0.5" : "1";
+    }
+}
+
+async function callGeminiAI(srtText, count) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+    
+    const prompt = `Você é um editor de vídeos especialista em podcasts e cortes virais. 
+Analise a transcrição SRT abaixo e selecione os ${count} melhores trechos (mais interessantes, engraçados ou polêmicos) para criar cortes curtos.
+IMPORTANTE: Retorne APENAS um array JSON puro, sem formatação markdown, seguindo este modelo:
+[{"start": segundos, "end": segundos, "topic": "título curto"}]
+
+Transcrição:
+${srtText}`;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || "Erro na API do Gemini");
+    }
+
+    const data = await response.json();
+    let text = data.candidates[0].content.parts[0].text;
+    // Limpeza básica se o modelo retornar markdown
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(text);
+}
+
+if (btnAi) {
+    btnAi.onclick = async () => {
+        try {
+            log("info", "Iniciando análise de IA...");
+            aiStatus.style.display = "block";
+            aiStatus.innerText = "🤖 Gemini analisando transcrição...";
+            btnAi.disabled = true;
+
+            // Formata SRT Simplificado para economizar tokens
+            const simplifiedSRT = captionItems.map((item, idx) => `[${item.start}-${item.end}] ${item.text}`).join("\n");
+            
+            const segments = await callGeminiAI(simplifiedSRT, sliderCuts.value);
+            
+            log("success", `IA encontrou ${segments.length} destaques!`);
+            aiStatus.innerText = "🎬 Criando cortes na timeline...";
+
+            cs.evalScript(`OWL.createAIHighlights(${JSON.stringify(segments)})`, (res) => {
+                aiStatus.style.display = "none";
+                btnAi.disabled = false;
+                if (res === "success") {
+                    log("success", "Sequência de CORTES IA criada com sucesso!");
+                    showToast("Cortes gerados em uma nova sequência!", "success");
+                } else {
+                    log("error", "Erro ao criar cortes: " + res);
+                }
+            });
+
+        } catch (e) {
+            log("error", "Falha na IA: " + e.message);
+            aiStatus.style.display = "none";
+            btnAi.disabled = false;
         }
     };
 }
@@ -614,3 +711,4 @@ document.getElementById("editFlagScale").oninput = (e) => {
 // Inicia no Load
 initGallery();
 updateTrackSelectors();
+checkAiReady();

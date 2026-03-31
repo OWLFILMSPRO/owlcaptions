@@ -314,3 +314,65 @@ OWL.ensureVideoTrack = function() {
     var finalCount = seq.videoTracks.numTracks;
     return (finalCount > 0) ? finalCount - 1 : 0;
 };
+
+OWL.createAIHighlights = function(segments) {
+    try {
+        var seq = app.project.activeSequence;
+        if (!seq) return "Falha: Nenhuma sequência ativa.";
+        
+        // 1. Localiza o clipe principal na trilha V1
+        var vTrack = seq.videoTracks[0];
+        if (vTrack.clips.numItems === 0) return "Falha: Trilha V1 está vazia.";
+        
+        // Pegaremos o primeiro clipe que encontrar na V1 como fonte
+        var sourceClip = null;
+        for (var c = 0; c < vTrack.clips.numItems; c++) {
+            if (vTrack.clips[c].projectItem) {
+                sourceClip = vTrack.clips[c];
+                break;
+            }
+        }
+        
+        if (!sourceClip) return "Falha: Nenhum clipe válido encontrado na V1.";
+        var projectItem = sourceClip.projectItem;
+
+        // 2. Cria nova sequência para os cortes
+        // No Premiere, createNewSequence exige um preset (.sqpreset) ou fica vazio.
+        // Tentaremos criar e se falhar avisamos.
+        var newSeqName = "CORTES IA - " + seq.name;
+        var newSeq = app.project.createNewSequence(newSeqName, ""); 
+        
+        if (!newSeq) return "Falha ao criar nova sequência. Tente criar uma sequência vazia manualmente primeiro.";
+
+        var currentTicks = "0";
+
+        for (var i = 0; i < segments.length; i++) {
+            var seg = segments[i];
+            
+            // Insere o clipe na nova sequência (V1 e A1 por padrão)
+            newSeq.videoTracks[0].overwriteClip(projectItem, currentTicks);
+            
+            // O overwriteClip insere o clipe inteiro. Precisamos trimar.
+            // Pegamos o último clipe inserido
+            var insertedClip = newSeq.videoTracks[0].clips[newSeq.videoTracks[0].clips.numItems - 1];
+            
+            var startTime = new Time(); startTime.seconds = parseFloat(seg.start);
+            var endTime = new Time(); endTime.seconds = parseFloat(seg.end);
+            
+            insertedClip.inPoint = startTime.ticks;
+            insertedClip.outPoint = endTime.ticks;
+            
+            // Calcula próxima posição (ticks são strings grandes, melhor usar a API de Time)
+            var durationTicks = endTime.ticks - startTime.ticks; 
+            // Nota: No ExtendScript, operações matemáticas com ticks (strings) podem ser instáveis.
+            // Usaremos a propriedade .seconds para cálculo e depois converteremos.
+            
+            var nextStartTime = new Time();
+            nextStartTime.ticks = currentTicks;
+            nextStartTime.seconds += (endTime.seconds - startTime.seconds);
+            currentTicks = nextStartTime.ticks;
+        }
+
+        return "success";
+    } catch(e) { return "JSX_ERR: " + e.toString(); }
+};

@@ -141,6 +141,23 @@
         </div>
     </div>
 
+    <div class="section-title">IA: Cortes de Podcast (BETA)</div>
+    <div class="card">
+        <div class="editor-row" style="margin-bottom: 12px;">
+            <span class="editor-label">Gemini API Key</span>
+            <input type="password" id="geminiApiKey" class="pos-scale-input" style="text-align: left; padding: 10px;" placeholder="Insira sua chave API aqui...">
+        </div>
+        <div class="editor-row" style="margin-bottom: 15px;">
+            <span class="editor-label" style="display: flex; justify-content: space-between;">Quantidade de Cortes <span id="valNumCuts" style="color: var(--primary); font-weight: 800;">3</span></span>
+            <div class="editor-input-group">
+                <input type="range" id="numCuts" class="editor-slider" min="1" max="10" value="3">
+            </div>
+        </div>
+        <button id="btnGenerateAICuts" class="btn-main" style="padding:15px; font-size:11px; width:100%; background: #9333ea; border: none; color: white; border-radius: 12px; font-weight: 800; cursor: pointer;" disabled>🤖 GERAR CORTES IA</button>
+        <div id="aiStatus" style="font-size: 8px; color: var(--muted); margin-top: 8px; text-align: center; display: none;">Processando com Gemini...</div>
+    </div>
+
+
     <div class="section-title">Step 2: Estilos de Legendas</div>
     <div class="card">
         <button id="btnImportMogrt" class="btn-main" style="width:100% ; margin-bottom: 12px; border: 1px dashed var(--primary); color: var(--primary);">➕ ADD CUSTOM MOGRT</button>

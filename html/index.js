@@ -202,8 +202,8 @@ function checkAiReady() {
 }
 
 async function callGeminiAI(srtText, count) {
-    // Usando o alias '-latest' que é mais resiliente a mudanças de versão
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
+    // Usando Gemini 2.0 Flash conforme solicitado pelo usuário
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
     
     const prompt = `Você é um editor de vídeos especialista em podcasts e cortes virais. 
 Analise a transcrição SRT abaixo e selecione os ${count} melhores trechos (mais interessantes, engraçados ou polêmicos) para criar cortes curtos.

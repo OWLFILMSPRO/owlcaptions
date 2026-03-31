@@ -8,7 +8,7 @@ let selectedMogrt = null;
 let selectedIntroMogrt = null;
 let currentEditingNodeId = null;
 let discoveredProps = {};
-let geminiKey = localStorage.getItem("gemini_api_key") || "";
+let groqKey = localStorage.getItem("groq_api_key") || "";
 
 function log(level, msg) {
   const c = document.getElementById("consoleLogs");
@@ -180,10 +180,10 @@ const btnAi = document.getElementById("btnGenerateAICuts");
 const aiStatus = document.getElementById("aiStatus");
 
 if (inputKey) {
-    inputKey.value = geminiKey;
+    inputKey.value = groqKey;
     inputKey.oninput = (e) => {
-        geminiKey = e.target.value;
-        localStorage.setItem("gemini_api_key", geminiKey);
+        groqKey = e.target.value;
+        localStorage.setItem("groq_api_key", groqKey);
         checkAiReady();
     };
 }
@@ -196,14 +196,13 @@ if (sliderCuts) {
 
 function checkAiReady() {
     if (btnAi) {
-        btnAi.disabled = !(captionItems.length > 0 && geminiKey.length > 10);
+        btnAi.disabled = !(captionItems.length > 0 && groqKey.length > 10);
         btnAi.style.opacity = btnAi.disabled ? "0.5" : "1";
     }
 }
 
-async function callGeminiAI(srtText, count) {
-    // Usando Gemini 2.0 Flash Lite para melhor disponibilidade no Free Tier
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`;
+async function callGroqAI(srtText, count) {
+    const url = `https://api.groq.com/openai/v1/chat/completions`;
     
     const prompt = `Você é um editor de vídeos especialista em podcasts e cortes virais. 
 Analise a transcrição SRT abaixo e selecione os ${count} melhores trechos (mais interessantes, engraçados ou polêmicos) para criar cortes curtos.
@@ -215,20 +214,24 @@ ${srtText}`;
 
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`
+        },
         body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
+            model: "llama-3.1-8b-instant",
+            messages: [{ role: "user", content: prompt }]
         })
     });
 
     if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error?.message || "Erro na API do Gemini");
+        throw new Error(err.error?.message || "Erro na API da Groq");
     }
 
     const data = await response.json();
-    let text = data.candidates[0].content.parts[0].text;
-    // Limpeza básica se o modelo retornar markdown
+    let text = data.choices[0].message.content;
+    // Limpeza se o modelo retornar markdown
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(text);
 }
@@ -238,13 +241,13 @@ if (btnAi) {
         try {
             log("info", "Iniciando análise de IA...");
             aiStatus.style.display = "block";
-            aiStatus.innerText = "🤖 Gemini analisando transcrição...";
+            aiStatus.innerText = "🤖 Groq analisando transcrição...";
             btnAi.disabled = true;
 
             // Formata SRT Simplificado para economizar tokens
             const simplifiedSRT = captionItems.map((item, idx) => `[${item.start}-${item.end}] ${item.text}`).join("\n");
             
-            const segments = await callGeminiAI(simplifiedSRT, sliderCuts.value);
+            const segments = await callGroqAI(simplifiedSRT, sliderCuts.value);
             
             log("success", `IA encontrou ${segments.length} destaques!`);
             aiStatus.innerText = "🎬 Criando cortes na timeline...";

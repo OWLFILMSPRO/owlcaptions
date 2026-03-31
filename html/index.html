@@ -141,20 +141,24 @@
         </div>
     </div>
 
-    <div class="section-title">IA: Cortes de Podcast (BETA)</div>
+    <div class="section-title">IA: Cortes de Podcast (VIZARD.AI)</div>
     <div class="card">
         <div class="editor-row" style="margin-bottom: 12px;">
-            <span class="editor-label">Groq API Key</span>
-            <input type="password" id="geminiApiKey" class="pos-scale-input" style="text-align: left; padding: 10px;" placeholder="Insira sua Groq API Key aqui...">
+            <span class="editor-label">Vizard API Key</span>
+            <input type="password" id="vizardApiKey" class="pos-scale-input" style="text-align: left; padding: 10px;" placeholder="Insira sua VIZARDAI_API_KEY aqui...">
         </div>
-        <div class="editor-row" style="margin-bottom: 15px;">
-            <span class="editor-label" style="display: flex; justify-content: space-between;">Quantidade de Cortes <span id="valNumCuts" style="color: var(--primary); font-weight: 800;">3</span></span>
-            <div class="editor-input-group">
-                <input type="range" id="numCuts" class="editor-slider" min="1" max="10" value="3">
-            </div>
+        <div class="editor-row" style="margin-bottom: 12px;">
+            <span class="editor-label">Link do Vídeo (GDrive/URL)</span>
+            <input type="text" id="vizardVideoUrl" class="pos-scale-input" style="text-align: left; padding: 10px;" placeholder="https://drive.google.com/file/d/...">
         </div>
-        <button id="btnGenerateAICuts" class="btn-main" style="padding:15px; font-size:11px; width:100%; background: #9333ea; border: none; color: white; border-radius: 12px; font-weight: 800; cursor: pointer;" disabled>🤖 GERAR CORTES IA</button>
-        <div id="aiStatus" style="font-size: 8px; color: var(--muted); margin-top: 8px; text-align: center; display: none;">Processando com Groq...</div>
+        <button id="btnCreateVizard" class="btn-main" style="padding:15px; font-size:11px; width:100%; background: #2563eb; border: none; color: white; border-radius: 12px; font-weight: 800; cursor: pointer; margin-bottom: 15px;">🚀 ENVIAR PARA VIZARD</button>
+
+        <div class="editor-row" style="margin-bottom: 15px; border-top: 1px solid #333; padding-top: 15px;">
+            <span class="editor-label">Vizard Project ID</span>
+            <input type="text" id="vizardProjectId" class="pos-scale-input" style="text-align: left; padding: 10px;" placeholder="Ex: 5f9a... ou cole a URL do projeto">
+        </div>
+        <button id="btnSyncVizard" class="btn-main" style="padding:15px; font-size:11px; width:100%; background: #000; border: 1px solid #333; color: white; border-radius: 12px; font-weight: 800; cursor: pointer;">🤖 SINCRONIZAR VIZARD</button>
+        <div id="aiStatus" style="font-size: 8px; color: var(--muted); margin-top: 8px; text-align: center; display: none;">Sincronizando com Vizard...</div>
     </div>
 
 

@@ -8,7 +8,7 @@ let selectedMogrt = null;
 let selectedIntroMogrt = null;
 let currentEditingNodeId = null;
 let discoveredProps = {};
-let groqKey = localStorage.getItem("groq_api_key") || "";
+let vizardKey = localStorage.getItem("vizard_api_key") || "";
 
 function log(level, msg) {
   const c = document.getElementById("consoleLogs");
@@ -172,101 +172,164 @@ if (bUpdatePlugin) {
     };
 }
 
-// ── Gemini IA Logic ──
-const inputKey = document.getElementById("geminiApiKey");
-const sliderCuts = document.getElementById("numCuts");
-const valCuts = document.getElementById("valNumCuts");
-const btnAi = document.getElementById("btnGenerateAICuts");
+// ── Vizard IA Logic ──
+const inputVizardKey = document.getElementById("vizardApiKey");
+const inputVideoUrl = document.getElementById("vizardVideoUrl");
+const btnCreateVizard = document.getElementById("btnCreateVizard");
+const inputProjectId = document.getElementById("vizardProjectId");
+const btnSyncVizard = document.getElementById("btnSyncVizard");
 const aiStatus = document.getElementById("aiStatus");
 
-if (inputKey) {
-    inputKey.value = groqKey;
-    inputKey.oninput = (e) => {
-        groqKey = e.target.value;
-        localStorage.setItem("groq_api_key", groqKey);
-        checkAiReady();
+if (inputVizardKey) {
+    inputVizardKey.value = vizardKey;
+    inputVizardKey.oninput = (e) => {
+        vizardKey = e.target.value;
+        localStorage.setItem("vizard_api_key", vizardKey);
     };
 }
 
-if (sliderCuts) {
-    sliderCuts.oninput = (e) => {
-        valCuts.innerText = e.target.value;
+async function fetchVizardClips(projectId) {
+    const cleanId = (id) => {
+        if (id.includes("projectId=")) return id.split("projectId=")[1].split("&")[0];
+        if (id.includes("/project/")) return id.split("/project/")[1].split("/")[0];
+        return id.trim();
     };
-}
-
-function checkAiReady() {
-    if (btnAi) {
-        btnAi.disabled = !(captionItems.length > 0 && groqKey.length > 10);
-        btnAi.style.opacity = btnAi.disabled ? "0.5" : "1";
-    }
-}
-
-async function callGroqAI(srtText, count) {
-    const url = `https://api.groq.com/openai/v1/chat/completions`;
     
-    const prompt = `Você é um editor de vídeos especialista em podcasts e cortes virais. 
-Analise a transcrição SRT abaixo e selecione os ${count} melhores trechos (mais interessantes, engraçados ou polêmicos) para criar cortes curtos.
-IMPORTANTE: Retorne APENAS um array JSON puro, sem formatação markdown, seguindo este modelo:
-[{"start": segundos, "end": segundos, "topic": "título curto"}]
+    const pid = cleanId(projectId);
+    const url = `https://elb-api.vizard.ai/hvizard-server-front/open-api/v1/project/query/${pid}`;
+    
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: { 
+            'Content-Type': 'application/json',
+            'VIZARDAI_API_KEY': vizardKey
+        }
+    });
 
-Transcrição:
-${srtText}`;
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.msg || "Erro na API da Vizard");
+    }
 
+    const res = await response.json();
+    if (res.code !== 0) throw new Error(res.msg || "Erro Vizard");
+    
+    if (!res.data || !res.data.clips || res.data.clips.length === 0) {
+        throw new Error("Nenhum clipe encontrado neste projeto Vizard.");
+    }
+
+    return res.data.clips.map(c => ({
+        start: c.startTime,
+        end: c.endTime,
+        topic: c.title || "Clip Vizard"
+    }));
+}
+
+async function createVizardProject(videoUrl) {
+    let finalUrl = videoUrl.trim();
+    
+    // Converte Google Drive para Link Direto
+    if (finalUrl.includes("drive.google.com")) {
+        let driveId = "";
+        const idMatch = finalUrl.match(/\/d\/(.+?)\//) || finalUrl.match(/id=(.+?)(&|$)/);
+        if (idMatch) driveId = idMatch[1];
+        
+        if (driveId) {
+            finalUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
+            log("info", "Link do Google Drive detectado, tentando conversão...");
+        }
+    }
+
+    const url = `https://elb-api.vizard.ai/hvizard-server-front/open-api/v1/project/create`;
+    
     const response = await fetch(url, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${groqKey}`
+            'VIZARDAI_API_KEY': vizardKey
         },
         body: JSON.stringify({
-            model: "meta-llama/llama-4-scout-17b-16e-instruct",
-            messages: [{ role: "user", content: prompt }]
+            projectName: "Premiere " + new Date().toLocaleDateString(),
+            videoUrl: finalUrl,
+            videoType: 1,
+            ext: "mp4",
+            lang: "pt"
         })
     });
 
     if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error?.message || "Erro na API da Groq");
+        throw new Error(err.msg || "Erro ao criar projeto na Vizard");
     }
 
-    const data = await response.json();
-    let text = data.choices[0].message.content;
-    // Limpeza se o modelo retornar markdown
-    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(text);
+    const res = await response.json();
+    if (res.code !== 0) throw new Error(res.msg || "Erro na criação Vizard");
+
+    return res.data.projectId;
 }
 
-if (btnAi) {
-    btnAi.onclick = async () => {
+if (btnCreateVizard) {
+    btnCreateVizard.onclick = async () => {
+        const videoUrl = inputVideoUrl.value.trim();
+        if (!videoUrl) { showToast("Insira o link GDrive/URL."); return; }
+        if (!vizardKey) { showToast("Insira sua Vizard API Key."); return; }
+
         try {
-            log("info", "Iniciando análise de IA...");
+            log("info", "Iniciando projeto no Vizard.ai...");
             aiStatus.style.display = "block";
-            aiStatus.innerText = "🤖 Groq analisando transcrição...";
-            btnAi.disabled = true;
+            aiStatus.innerText = "🚀 Enviando para Vizard...";
+            btnCreateVizard.disabled = true;
 
-            // Formata SRT Simplificado para economizar tokens
-            const simplifiedSRT = captionItems.map((item, idx) => `[${item.start}-${item.end}] ${item.text}`).join("\n");
+            const projectId = await createVizardProject(videoUrl);
             
-            const segments = await callGroqAI(simplifiedSRT, sliderCuts.value);
+            log("success", `Projeto criado com sucesso! ID: ${projectId}`);
+            inputProjectId.value = projectId;
+            showToast("Projeto criado! Aguarde o processamento no Vizard.", "success");
             
-            log("success", `IA encontrou ${segments.length} destaques!`);
+            aiStatus.innerText = "⏳ Em processamento no Vizard (Aguarde alguns minutos)...";
+        } catch(e) {
+            log("error", "Falha ao criar: " + e.message);
+            showToast(e.message, "error");
+            aiStatus.style.display = "none";
+        } finally {
+            btnCreateVizard.disabled = false;
+        }
+    };
+}
+
+if (btnSyncVizard) {
+    btnSyncVizard.onclick = async () => {
+        const pid = inputProjectId.value.trim();
+        if (!pid) { showToast("Insira o Project ID ou URL da Vizard."); return; }
+        if (!vizardKey) { showToast("Insira sua Vizard API Key."); return; }
+
+        try {
+            log("info", "Sincronizando com Vizard.ai...");
+            aiStatus.style.display = "block";
+            aiStatus.innerText = "🤖 Buscando destaques no Vizard...";
+            btnSyncVizard.disabled = true;
+
+            const segments = await fetchVizardClips(pid);
+            
+            log("success", `Vizard retornou ${segments.length} destaques!`);
             aiStatus.innerText = "🎬 Criando cortes na timeline...";
-
+            
             cs.evalScript(`OWL.createAIHighlights(${JSON.stringify(segments)})`, (res) => {
                 aiStatus.style.display = "none";
-                btnAi.disabled = false;
+                btnSyncVizard.disabled = false;
                 if (res === "success") {
-                    log("success", "Sequência de CORTES IA criada com sucesso!");
-                    showToast("Cortes gerados em uma nova sequência!", "success");
+                    log("success", "Sequência de CORTES IA (Vizard) criada com sucesso!");
+                    showToast("Cortes sincronizados com a Vizard!", "success");
                 } else {
                     log("error", "Erro ao criar cortes: " + res);
+                    showToast("Erro ao criar cortes na timeline.", "error");
                 }
             });
-
-        } catch (e) {
-            log("error", "Falha na IA: " + e.message);
+        } catch(e) {
+            log("error", "Falha Vizard: " + e.message);
+            showToast(e.message, "error");
             aiStatus.style.display = "none";
-            btnAi.disabled = false;
+            btnSyncVizard.disabled = false;
         }
     };
 }
